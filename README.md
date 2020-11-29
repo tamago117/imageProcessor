@@ -1,2 +1,4 @@
 # imageProcessing
-ROS node of image process
+ROS package of image process
+
+・OpenCV
