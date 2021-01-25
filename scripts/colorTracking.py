@@ -6,9 +6,9 @@ import sys
 sys.path.remove('/opt/ros/kinetic/lib/python2.7/dist-packages')
 import cv2
 import numpy as np
-from sensor_msgs.msg import Image, CameraInfo
+#from sensor_msgs.msg import Image, CameraInfo
 from std_msgs.msg import Int32MultiArray
-from cv_bridge import CvBridge, CvBridgeError
+#from cv_bridge import CvBridge, CvBridgeError
 
 class colorTracking:
     def __init__(self, ini_cap):
@@ -18,10 +18,8 @@ class colorTracking:
         self.node_name = "color_tracking"
         rospy.init_node(self.node_name)
         rospy.on_shutdown(self.cleanup)
-        self.bridge = CvBridge()
         #self.image_sub = rospy.Subscriber("input_imge", Image, self.image_callback, queue_size=1)
-        self.pub1 = rospy.Publisher("position", Int32MultiArray, queue_size=1)
-        self.pub2 = rospy.Publisher("processedImage", Image, queue_size=2)
+        self.pub = rospy.Publisher("resultImage", Int32MultiArray, queue_size=1)
 
 
     def convertColor(self, frame):
@@ -86,8 +84,7 @@ def main():
         cv2.imshow("img",frame)
         #dst.write(frame)
         rospy.loginfo(" x:"+str(point[0])+" y:"+str(point[1]))
-        Ctrac.pub1.publish(point_forPub)
-        Ctrac.pub2.publish(Ctrac.bridge.cv2_to_imgmsg(frame, "bgr88"))
+        Ctrac.pub.publish(point_forPub)
 
         #r.sleep()
         cv2.waitKey(30)
