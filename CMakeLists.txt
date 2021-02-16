@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.0.2)
-project(imageProcessor)
+project(magImage)
 
 ## Compile as C++11, supported in ROS Kinetic and newer
 # add_compile_options(-std=c++11)
@@ -8,14 +8,20 @@ project(imageProcessor)
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
+  cv_bridge
+  image_transport
   roscpp
   rospy
   std_msgs
   tf
-  sensor_msgs
-  cv2
-  cv_bridge
 )
+
+find_package(OpenMP REQUIRED)
+if(OPENMP_FOUND)
+  message(STATUS "OPENMP FOUND")
+  set(OpenMP_FLAGS ${OpenMP_CXX_FLAGS})  # or if you use C: ${OpenMP_C_FLAGS}
+  set(OpenMP_LIBS gomp)
+endif()
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
@@ -108,7 +114,7 @@ find_package(catkin REQUIRED COMPONENTS
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
 #  INCLUDE_DIRS include
-#  LIBRARIES imageProcessor
+#  LIBRARIES magImagePrecessor
 #  CATKIN_DEPENDS roscpp rospy std_msgs tf
 #  DEPENDS system_lib
 )
@@ -126,7 +132,7 @@ include_directories(
 
 ## Declare a C++ library
 # add_library(${PROJECT_NAME}
-#   src/${PROJECT_NAME}/imageProcessor.cpp
+#   src/${PROJECT_NAME}/magImagePrecessor.cpp
 # )
 
 ## Add cmake target dependencies of the library
@@ -137,7 +143,7 @@ include_directories(
 ## Declare a C++ executable
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
-# add_executable(${PROJECT_NAME}_node src/imageProcessor_node.cpp)
+# add_executable(${PROJECT_NAME}_node src/magImagePrecessor_node.cpp)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -201,10 +207,26 @@ include_directories(
 #############
 
 ## Add gtest based cpp test target and link libraries
-# catkin_add_gtest(${PROJECT_NAME}-test test/test_imageProcessor.cpp)
+# catkin_add_gtest(${PROJECT_NAME}-test test/test_magImagePrecessor.cpp)
 # if(TARGET ${PROJECT_NAME}-test)
 #   target_link_libraries(${PROJECT_NAME}-test ${PROJECT_NAME})
 # endif()
 
 ## Add folders to be run by python nosetests
 # catkin_add_nosetests(test)
+
+add_executable(magImage   src/magImage.cpp)
+target_compile_options(magImage PRIVATE ${OpenMP_FLAGS})
+add_dependencies(magImage ${catkin_EXPORTED_TARGETS})
+target_link_libraries(magImage
+  ${catkin_LIBRARIES}
+  ${OpenMP_LIBS}
+)
+add_executable(CSVout   src/CSVout_node.cpp)
+target_link_libraries(CSVout
+  ${catkin_LIBRARIES}
+)
+add_executable(IGS_CSVout src/IGS_CSVout_node.cpp)
+target_link_libraries(IGS_CSVout
+  ${catkin_LIBRARIES}
+)
