@@ -12,7 +12,7 @@
 
 const int minDist = 300;
 const int param1 = 20;
-const int param2 = 26;
+const int param2 = 28;
 const int maxRadius = 250;
 const int minRadius = 120;
 
