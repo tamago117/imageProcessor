@@ -1,39 +1,40 @@
 #include <ros/ros.h>
 #include <std_msgs/Float32MultiArray.h>
+
+#include <string>
+#include <vector>
+#include <math.h>
+
 #include <opencv2/core.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <image_transport/image_transport.h>
 #include <cv_bridge/cv_bridge.h>
 
-#include <string>
-#include <vector>
-#include <math.h>
 
-const uint8_t minH = 5;
-const uint8_t minS = 100;
-const uint8_t minV = 0;
-const uint8_t maxH = 20;
-const uint8_t maxS = 255;
-const uint8_t maxV = 255;
+//red and orange
+const double minH = 0;
+const double minS = 127;
+const double minV = 0;
+const double maxH = 25;
+const double maxS = 255;
+const double maxV = 255;
 
 class colorTracking
 {
 ros::NodeHandle nh;
 image_transport::ImageTransport it;
 image_transport::Subscriber image_sub;
-image_transport::Publisher proImgPub;
+image_transport::Publisher proImgPub, maskImgPub;
 ros::Publisher posPub = nh.advertise<std_msgs::Float32MultiArray>("result", 10);
 
 private:
-    int centerX, centerY;
+    int centerX = 0;
+    int centerY = 0;
+    int detectState = 0;
     cv::Mat image, image_g, mask;
     std::vector<float> vecData_row;
     std::vector<float> vecData;
-    template <class T> T clip(const T& n, float lower, float upper);
-    template <class T> T normalize(const T& n, float xmin, float xmax ,float amin, float amax);
-    float minValue(const std::vector<float>& value);
-    float maxValue(const std::vector<float>& value);
     cv::Mat colorBinarization(const cv::Mat& frame);
     void maxContourAnalysis(const cv::Mat& mask);
     void image_callback(const sensor_msgs::ImageConstPtr& image_message);
@@ -45,7 +46,8 @@ public:
 colorTracking::colorTracking():it(nh)
 {
     proImgPub = it.advertise("processedImage", 10);
-    image_sub = it.subscribe("image_raw", 10, &colorTracking::image_callback, this);
+    maskImgPub = it.advertise("maskImage", 10);
+    image_sub = it.subscribe("image", 10, &colorTracking::image_callback, this);
 }
 
 colorTracking::~colorTracking()
@@ -53,43 +55,23 @@ colorTracking::~colorTracking()
     //cv::destroyAllWindows();
 }
 
-float colorTracking::minValue(const std::vector<float>& value)
-{
-    float minV = 99999999;
-
-    for(int i=0; i<value.size(); i++){
-        if(minV>value[i]){
-            minV = value[i];
-        }
-    }
-
-    return minV;
-
-}
-
-float colorTracking::maxValue(const std::vector<float>& value)
-{
-    float maxV = -99999999;
-
-    for(int i=0; i<value.size(); i++){
-        if(maxV<value[i]){
-            maxV = value[i];
-        }
-    }
-
-    return maxV;
-
-}
-
 cv::Mat colorTracking::colorBinarization(const cv::Mat& frame)
 {
-    cv::Mat hsv_image, hsv_min, hsv_max;
-    cv::cvtColor(frame, hsv_image, CV_BGR2HSV, 3);
+    cv::Mat hsv_frame, hsv_min, hsv_max;
+    cv::cvtColor(frame, hsv_frame, CV_BGR2HSV);
     //binarization
-	cv::inRange(hsv_image, cv::Scalar(minH, minS, minV), cv::Scalar(maxH, maxS, maxV), mask);
+	cv::inRange(hsv_frame, cv::Scalar(minH, minS, minV), cv::Scalar(maxH, maxS, maxV), mask);
     //dilate
-    cv::Mat kernel(5,5,CV_8U, cv::Scalar(1));
-    cv::morphologyEx(mask, mask, cv::MORPH_OPEN, kernel, cv::Point(-1, -1), 10);
+    cv::Mat kernel1(3,3,CV_8U, cv::Scalar(1));
+    cv::morphologyEx(mask, mask, cv::MORPH_OPEN, kernel1, cv::Point(-1, -1), 5);
+    //erode
+    cv::Mat kernel2(5,5,CV_8U, cv::Scalar(1));
+    cv::morphologyEx(mask, mask, cv::MORPH_CLOSE, kernel2, cv::Point(-1, -1), 25);
+    //dilate
+    cv::Mat kernel3(3,3,CV_8U, cv::Scalar(1));
+    cv::morphologyEx(mask, mask, cv::MORPH_OPEN, kernel1, cv::Point(-1, -1), 10);
+
+
     return mask;
 }
 
@@ -99,19 +81,34 @@ void colorTracking::maxContourAnalysis(const cv::Mat& mask)
     std::vector<cv::Vec4i> hierarchy;
     cv::findContours(mask, contours, hierarchy, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
 
+    int i=0;
+    int maxConPos = 0;
     for(const auto& contour: contours){
-        if (contour.size() < 150) continue;
-        //輪郭凸包
+        i++;
+        //ignore tiny area
+        if (contour.size() < 30) continue;
+        //searh max area
+        if (contour.max_size() <= contour.size()+1 & contour.max_size() >= contour.size()-1) maxConPos = i;
+    }
+    //輪郭凸包
+    if(contours.size()>0){
         std::vector<cv::Point> approx;
-        cv::convexHull(contour, approx);
+        cv::convexHull(contours[maxConPos], approx);
         cv::Mat pointsf;
-        cv::Mat(contour).convertTo(pointsf, CV_32F);
+        //cv::Mat(contours[maxConPos]).convertTo(pointsf, CV_32F);
+        cv::Mat(approx).convertTo(pointsf, CV_32F);
         // 楕円フィッティング
-        cv::RotatedRect box = cv::fitEllipse(pointsf);
-        // 楕円の描画
-        cv::ellipse(image, box, cv::Scalar(0x00, 0xFF), 2, cv::LINE_AA);
-        centerX = box.center.x - mask.cols;
-        centerY = box.center.y - mask.rows;
+        if(pointsf.rows>4){
+            cv::RotatedRect box = cv::fitEllipse(pointsf);
+            // 楕円の描画
+            cv::ellipse(image, box, cv::Scalar(0, 255, 0), 2, cv::LINE_AA);
+
+            centerX = box.center.x - mask.cols/2;
+            centerY = mask.rows/2 - box.center.y;
+            detectState = 1;
+        }
+    }else{
+        detectState = 0;
     }
 }
 
@@ -119,28 +116,38 @@ void colorTracking::image_callback(const sensor_msgs::ImageConstPtr& image_messa
 {
     try {
         image = cv_bridge::toCvCopy(image_message, sensor_msgs::image_encodings::BGR8)->image;
+        //image_g = cv_bridge::toCvCopy(image_message, sensor_msgs::image_encodings::MONO8)->image;
     }
     catch (cv_bridge::Exception& e) {
         ROS_ERROR("cv_bridge exception: %s", e.what());
         return;
     }
 
-    cv::cvtColor(image, image_g, CV_BGR2GRAY);
-    mask = colorBinarization(image_g);
+    //cv::cvtColor(image, image_g, CV_BGR2GRAY);
+    mask = colorBinarization(image);
     maxContourAnalysis(mask);
 
-    //cv::putText(image, std::to_string(maxValue(vecData_row)), cv::Point(25,15), cv::FONT_HERSHEY_SIMPLEX, 0.6, cv::Scalar(0,0,0), 2);
-    //cv::putText(image, std::to_string(minValue(vecData_row)), cv::Point(25,height-15), cv::FONT_HERSHEY_SIMPLEX, 0.6, cv::Scalar(0,0,0), 2);
+    std::string dState;
+    if(detectState){
+        dState = "True";
+    }else{
+        dState = "False";
+    }
+    std::string cenPos = "X:"+std::to_string(centerX)+",Y:"+std::to_string(centerY)+","+dState;
+    cv::putText(image, cenPos, cv::Point(50, 50), cv::FONT_HERSHEY_SIMPLEX, 1.5, cv::Scalar(255,0,0), 4);
+    std_msgs::Float32MultiArray pos;
+    pos.data.resize(3);
+    pos.data[0] = centerX;
+    pos.data[1] = centerY;
+    pos.data[2] = detectState; //state
+    posPub.publish(pos);
 
-    sensor_msgs::ImagePtr proImage = cv_bridge::CvImage(std_msgs::Header(), "bgr8", image).toImageMsg();
-    proImgPub.publish(proImage);
+    sensor_msgs::ImagePtr image_pub = cv_bridge::CvImage(std_msgs::Header(), "bgr8", image).toImageMsg();
+    sensor_msgs::ImagePtr mask_pub = cv_bridge::CvImage(std_msgs::Header(), "mono8", mask).toImageMsg();
+    proImgPub.publish(image_pub);
+    maskImgPub.publish(mask_pub);
 
-    //image_g = cv_bridge::toCvCopy(image_message, sensor_msgs::image_encodings::MONO8)->image;
-    //cv::imshow("image", image);
-    //cv::waitKey(1);
 }
-
-
 
 int main(int argc, char** argv)
 {
