@@ -1,0 +1,9 @@
+<launch>
+  <arg name="rvizconfig" default="$(find imageProcessor)/rviz/colorTracking.rviz" />
+
+  <node name="uvc_camera_node" pkg="uvc_camera" type="uvc_camera_node" >
+    <remap from="image_raw" to="image"/>
+  </node>
+  <node name="colorTracking" pkg="imageProcessor" type="colorTracking" />
+  <node name="rviz" pkg="rviz" type="rviz" args="-d $(arg rvizconfig)" required="true"/>
+</launch>
