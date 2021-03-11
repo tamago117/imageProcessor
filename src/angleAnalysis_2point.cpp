@@ -12,9 +12,9 @@
 
 const int minDist = 300;
 const int param1 = 20;
-const int param2 = 28;
-const int maxRadius = 250;
-const int minRadius = 120;
+const int param2 = 32;
+const int maxRadius = 150;
+const int minRadius = 60;
 
 class angleAnalysis
 {
@@ -167,7 +167,7 @@ void angleAnalysis::image_callback(const sensor_msgs::ImageConstPtr& image_messa
 
     std_msgs::Float32MultiArray result;
     result.data.resize(2);
-    result.data[0] = theta;
+    result.data[0] = theta+90;
     result.data[1] = isDetect;
 
     sensor_msgs::ImagePtr pubProImage = cv_bridge::CvImage(std_msgs::Header(), "mono8", image_g).toImageMsg();

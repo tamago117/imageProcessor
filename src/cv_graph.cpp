@@ -23,6 +23,9 @@ ros::Subscriber vecSub;
 image_transport::Publisher graphImgPub;
 
 private:
+    float maxVecValue;
+    float minVecValue;
+
     cv::Mat image;
     std::vector<float> vecData_row;
     std::vector<float> vecData;
@@ -38,6 +41,9 @@ public:
 
 cv_graph::cv_graph():it(nh)
 {
+    ros::NodeHandle pnh("~");
+    pnh.getParam("maxValue", maxVecValue);
+
     graphImgPub = it.advertise("graphImage", 10);
     vecSub = nh.subscribe("sensorValue", 10, &cv_graph::vec_callback, this);
 }
@@ -97,8 +103,7 @@ float cv_graph::maxValue(const std::vector<float>& value)
 
 void cv_graph::vec_callback(const std_msgs::Float32MultiArray& vec_message)
 {
-    float maxVecValue = 0.1;
-    float minVecValue = -0.1;
+    minVecValue = -maxVecValue;
 
     vecData_row = vec_message.data;
     //->minV~maxV
