@@ -34,13 +34,13 @@ class lineSensorImageProcessor:
     def ImageProcessor(self, image):
         #image_blur = cv2.bilateralFilter(image, 10, 20, 20)
         #image_blur = cv2.medianBlur(image, 9)
-        #image_blur = cv2.GaussianBlur(image, (31,31), 2)
+        image_blur = cv2.GaussianBlur(image, (31,31), 2)
 
         #ret,image_th = cv2.threshold(image, 120, 255, cv2.THRESH_BINARY)
 
-        #image_eq = cv2.equalizeHist(image_blur)
+        #image_eq = cv2.equalizeHist(image)
         
-        return image_gamma
+        return image_blur
 
     def cleanup(self):
         cv2.destroyAllWindows()
