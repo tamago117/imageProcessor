@@ -1,0 +1,9 @@
+#red and orange
+minH : 0
+maxH : 25
+minS : 127
+maxS : 255
+minV : 0
+maxV : 255
+
+debug : true

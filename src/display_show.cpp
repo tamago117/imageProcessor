@@ -1,3 +1,5 @@
+//開発途中
+
 #include <ros/ros.h>
 #include <std_msgs/Float32MultiArray.h>
 
@@ -164,6 +166,12 @@ void colorTracking::image_callback(const sensor_msgs::ImageConstPtr& image_messa
     sensor_msgs::ImagePtr mask_pub = cv_bridge::CvImage(std_msgs::Header(), "mono8", mask).toImageMsg();
     proImgPub.publish(image_pub);
     maskImgPub.publish(mask_pub);
+
+    cv::Mat img= cv::Mat::zeros(1080, 1920, CV_8UC3);
+    cv::namedWindow("colorTracking",0);
+    cv::setWindowProperty("colorTracking", cv::WND_PROP_FULLSCREEN, cv::WINDOW_FULLSCREEN);
+    cv::imshow("colorTracking", img);
+    cv::waitKey(1);
 
 }
 

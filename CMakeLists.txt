@@ -214,12 +214,15 @@ include_directories(
 add_executable(angleAnalysis_2point   src/angleAnalysis_2point.cpp)
 target_link_libraries(angleAnalysis_2point
   ${catkin_LIBRARIES}
+  ${OpenCV_LIBRARIES}
 )
 add_executable(cv_graph   src/cv_graph.cpp)
 target_link_libraries(cv_graph
   ${catkin_LIBRARIES}
+  ${OpenCV_LIBRARIES}
 )
 add_executable(colorTracking   src/colorTracking.cpp)
 target_link_libraries(colorTracking
   ${catkin_LIBRARIES}
+  ${OpenCV_LIBRARIES}
 )

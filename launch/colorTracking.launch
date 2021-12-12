@@ -4,6 +4,8 @@
   <node name="uvc_camera_node" pkg="uvc_camera" type="uvc_camera_node" >
     <remap from="image_raw" to="image"/>
   </node>
-  <node name="colorTracking" pkg="imageProcessor" type="colorTracking" />
+  <node name="colorTracking" pkg="imageProcessor" type="colorTracking" >
+      <rosparam command="load" file="$(find imageProcessor)/config/colorTracking.yaml" />
+  </node>
   <node name="rviz" pkg="rviz" type="rviz" args="-d $(arg rvizconfig)" required="true"/>
 </launch>
